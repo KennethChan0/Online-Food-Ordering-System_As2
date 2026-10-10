@@ -36,19 +36,28 @@ const loginUser = async (req, res) => {
 
 const getProfile = async (req, res) => {
     try {
-      const user = await User.findById(req.user.id);
+      // User cannot specify another account to view.
+      if (Object.keys(req.query).length > 0) {
+        return res.status(400).json({ message: 'You can only view your own profile'})
+      }
+      const user = await User.findById(req.user.id).select('-password');
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-  
-      res.status(200).json({
+
+      const profile ={
         name: user.name,
         email: user.email,
-        university: user.university,
-        address: user.address,
-      });
+        phone: user.phone || '',
+        role: user.role
+      };
+
+      if (user.role === 'restaurant') {
+        profile.restaurantAddress = user.restaurantAddress || '';
+      }
+      return  res.status(200).json(profile);
     } catch (error) {
-      res.status(500).json({ message: 'Server error', error: error.message });
+      res.status(500).json({ message: 'Failed to load profile. Please try again,', error: error.message });
     }
   };
 
