@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-  const { user } = useAuth(); // Access user token from context
+  const { user, logout } = useAuth(); // Access user token from context
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,12 +15,14 @@ const Profile = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const token = user?.token;
 
   useEffect(() => {
     if (!token) return;
     let active = true;
-    
+
     // Fetch profile data from the backend
     const fetchProfile = async () => {
       setLoading(true);
@@ -29,22 +32,22 @@ const Profile = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (active){
-        setFormData({
-          name: response.data.name,
-          email: response.data.email,
-          phone: response.data.phone || '',
-          restaurantAddress: response.data.restaurantAddress || '',
-          role: response.data.role || '',
-        });
-      }
+        if (active) {
+          setFormData({
+            name: response.data.name,
+            email: response.data.email,
+            phone: response.data.phone || '',
+            restaurantAddress: response.data.restaurantAddress || '',
+            role: response.data.role || '',
+          });
+        }
       } catch (error) {
-        if (active){
-        setError(error.response?.data?.message||'Failed to fetch profile. Please try again.');
+        if (active) {
+          setError(error.response?.data?.message || 'Failed to fetch profile. Please try again.');
         }
       } finally {
-        if (active){
-        setLoading(false);
+        if (active) {
+          setLoading(false);
         }
       }
     };
@@ -56,7 +59,39 @@ const Profile = () => {
     }
   }, [token]);
 
-  if (!token){
+  const handleDelete = async () => {
+      if (deleting) return;
+
+      setDeleteError('');
+
+      const confirmed = window.confirm(
+        'Are you sure you want to delete your account? This is permanent and cannot be undone.'
+      );
+
+      if (!confirmed) return;
+
+      setDeleting(true);
+
+      try {
+        const response = await axiosInstance.delete('/api/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { confirmDelete: true },
+        });
+
+        logout();
+        navigate('/login', { replace: true });
+        window.alert(response.data.message);
+      } catch (error) {
+        setDeleteError(
+          error.response?.data?.message ||
+          'Failed to delete account. Please try again.'
+        );
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
@@ -130,10 +165,26 @@ const Profile = () => {
         <input
           id="profile-role"
           type="text"
-          value={formData.role === 'restaurant'? 'Restaurant' : 'Customer'}
+          value={formData.role === 'restaurant' ? 'Restaurant' : 'Customer'}
           readOnly
           className="w-full mb-4 p-2 border rounded"
         />
+        <div className="mt-6 pt-4 border-t">
+          {deleteError && (
+            <p role="alert" className="text-red-600 mb-3">
+              {deleteError}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="w-full bg-red-600 text-white p-2 rounded disabled:opacity-50"
+          >
+            {deleting ? 'Deleting...' : 'Delete Account'}
+          </button>
+        </div>
       </div>
     </div>
   );
