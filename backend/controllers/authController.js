@@ -57,7 +57,7 @@ const getProfile = async (req, res) => {
       }
       return  res.status(200).json(profile);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to load profile. Please try again,', error: error.message });
+      return res.status(500).json({ message: 'Failed to load profile. Please try again,'});
     }
   };
 

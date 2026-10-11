@@ -80,30 +80,33 @@ const Profile = () => {
           {formData.role === 'restaurant' ? 'Restaurant Name' : 'Username'}
         </label>
         <input
+          id="profile-name"
           type="text"
           placeholder="Name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          readOnly
           className="w-full mb-4 p-2 border rounded"
         />
         <label htmlFor='profile-email' className="block mb-1">
           Email
         </label>
         <input
+          id="profile-email"
           type="email"
           placeholder="Email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          readOnly
           className="w-full mb-4 p-2 border rounded"
         />
         <label htmlFor='profile-phone' className="block mb-1">
           Phone
         </label>
         <input
+          id="profile-phone"
           type="text"
           placeholder="Phone"
           value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          readOnly
           className="w-full mb-4 p-2 border rounded"
         />
         {formData.role === 'restaurant' && (
@@ -112,10 +115,11 @@ const Profile = () => {
               Restaurant Address
             </label>
             <input
+              id="profile-restaurant-address"
               type="text"
               placeholder="Restaurant Address"
               value={formData.restaurantAddress}
-              onChange={(e) => setFormData({ ...formData, restaurantAddress: e.target.value })}
+              readOnly
               className="w-full mb-4 p-2 border rounded"
             />
           </>
