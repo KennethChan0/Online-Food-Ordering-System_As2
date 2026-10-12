@@ -18,6 +18,9 @@ const Profile = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const token = user?.token;
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -60,36 +63,109 @@ const Profile = () => {
   }, [token]);
 
   const handleDelete = async () => {
-      if (deleting) return;
+    if (deleting || saving) return;
 
-      setDeleteError('');
+    setDeleteError('');
 
-      const confirmed = window.confirm(
-        'Are you sure you want to delete your account? This is permanent and cannot be undone.'
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This is permanent and cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+
+    try {
+      const response = await axiosInstance.delete('/api/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { confirmDelete: true },
+      });
+
+      logout();
+      navigate('/login', { replace: true });
+      window.alert(response.data.message);
+    } catch (error) {
+      setDeleteError(
+        error.response?.data?.message ||
+        'Failed to delete account. Please try again.'
       );
+    } finally {
+      setDeleting(false);
+    }
+  };
 
-      if (!confirmed) return;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-      setDeleting(true);
+    setFormData({ ...formData, [name]: value });
+    setSaveError('');
+    setMessage('');
+  };
 
-      try {
-        const response = await axiosInstance.delete('/api/auth/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-          data: { confirmDelete: true },
-        });
+  const handleSave = async (event) => {
+    event.preventDefault();
 
-        logout();
-        navigate('/login', { replace: true });
-        window.alert(response.data.message);
-      } catch (error) {
-        setDeleteError(
-          error.response?.data?.message ||
-          'Failed to delete account. Please try again.'
-        );
-      } finally {
-        setDeleting(false);
-      }
-    };
+    if (saving || deleting) return;
+
+    setSaveError('');
+    setMessage('');
+
+    const name = formData.name.trim();
+    const phone = formData.phone.trim();
+    const digits = phone.replace(/\D/g, '');
+    const restaurantAddress = formData.restaurantAddress.trim();
+
+    if (!name || name.length > 80) {
+      setSaveError('Name must contain 1 to 80 characters');
+      return;
+    }
+
+    if (
+      !/^\+?[0-9 ()-]+$/.test(phone) ||
+      phone.length > 25 ||
+      digits.length < 7 ||
+      digits.length > 15
+    ) {
+      setSaveError('Please enter a valid phone number');
+      return;
+    }
+
+    if (
+      formData.role === 'restaurant' &&
+      (!restaurantAddress || restaurantAddress.length > 300)
+    ) {
+      setSaveError('Restaurant address must contain 1 to 300 characters');
+      return;
+    }
+
+    const updates = { name, phone };
+
+    if (formData.role === 'restaurant') {
+      updates.restaurantAddress = restaurantAddress;
+    }
+
+    setSaving(true);
+
+    try {
+      const response = await axiosInstance.put('/api/auth/profile', updates, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setFormData({
+        ...response.data.profile,
+        restaurantAddress: response.data.profile.restaurantAddress || '',
+      });
+
+      setMessage(response.data.message);
+    } catch (error) {
+      setSaveError(
+        error.response?.data?.message ||
+        'Failed to update profile. Please try again.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -107,19 +183,32 @@ const Profile = () => {
 
   return (
     <div className="max-w-md mx-auto mt-20">
-      <div className="bg-white p-6 shadow-md rounded">
+      <form onSubmit={handleSave} className="bg-white p-6 shadow-md rounded">
         <h1 className="text-2xl font-bold mb-4 text-center">
           {formData.role === 'restaurant' ? 'Restaurant Profile' : 'Your Profile'}
         </h1>
+        {saveError && (
+          <p role="alert" className="text-red-600 mb-4">
+            {saveError}
+          </p>
+        )}
+        {message && (
+          <p role="status" className="text-green-600 mb-4">
+            {message}
+          </p>
+        )}
         <label htmlFor='profile-name' className="block mb-1">
           {formData.role === 'restaurant' ? 'Restaurant Name' : 'Username'}
         </label>
         <input
           id="profile-name"
+          name="name"
           type="text"
-          placeholder="Name"
           value={formData.name}
-          readOnly
+          onChange={handleChange}
+          required
+          maxLength={80}
+          disabled={saving || deleting}
           className="w-full mb-4 p-2 border rounded"
         />
         <label htmlFor='profile-email' className="block mb-1">
@@ -138,10 +227,13 @@ const Profile = () => {
         </label>
         <input
           id="profile-phone"
-          type="text"
-          placeholder="Phone"
+          name="phone"
+          type="tel"
           value={formData.phone}
-          readOnly
+          onChange={handleChange}
+          required
+          maxLength={25}
+          disabled={saving || deleting}
           className="w-full mb-4 p-2 border rounded"
         />
         {formData.role === 'restaurant' && (
@@ -151,10 +243,13 @@ const Profile = () => {
             </label>
             <input
               id="profile-restaurant-address"
+              name="restaurantAddress"
               type="text"
-              placeholder="Restaurant Address"
               value={formData.restaurantAddress}
-              readOnly
+              onChange={handleChange}
+              required
+              maxLength={300}
+              disabled={saving || deleting}
               className="w-full mb-4 p-2 border rounded"
             />
           </>
@@ -175,17 +270,23 @@ const Profile = () => {
               {deleteError}
             </p>
           )}
-
+          <button
+            type="submit"
+            disabled={saving || deleting}
+            className="w-full bg-blue-600 text-white p-2 rounded disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={deleting || saving}
             className="w-full bg-red-600 text-white p-2 rounded disabled:opacity-50"
           >
             {deleting ? 'Deleting...' : 'Delete Account'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
