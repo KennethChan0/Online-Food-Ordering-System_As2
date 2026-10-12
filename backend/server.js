@@ -14,6 +14,9 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 
+// Table reservation routes - US19
+app.use('/api/reservations', require('./routes/reservationRoutes'));
+
 // Export the app object for testing
 if (require.main === module) {
     connectDB();
