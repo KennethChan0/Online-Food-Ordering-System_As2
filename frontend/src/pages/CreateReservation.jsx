@@ -1,7 +1,37 @@
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+
+// Convert Australian date DD/MM/YYYY to YYYY-MM-DD
+const convertDateToISO = (australianDate) => {
+  const match = australianDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  const selectedDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Check valid date and prevent past dates
+  if (
+    selectedDate.getFullYear() !== year ||
+    selectedDate.getMonth() !== month - 1 ||
+    selectedDate.getDate() !== day ||
+    selectedDate < today
+  ) {
+    return null;
+  }
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+};
 
 const CreateReservation = () => {
   const { user } = useAuth();
@@ -20,14 +50,6 @@ const CreateReservation = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Get today's local date for the date input
-  const today = new Date();
-  const minDate = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0')
-  ].join('-');
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -40,13 +62,23 @@ const CreateReservation = () => {
     setSuccess('');
     setError('');
 
+    // Check login
     if (!user?.token) {
       setError('Please log in to make a reservation.');
       return;
     }
 
+    // Check customer role
     if (user.role !== 'customer') {
       setError('Only customers can make reservations.');
+      return;
+    }
+
+    // Convert DD/MM/YYYY to YYYY-MM-DD
+    const isoDate = convertDateToISO(formData.reservationDate);
+
+    if (!isoDate) {
+      setError('Please enter a valid future date in DD/MM/YYYY format.');
       return;
     }
 
@@ -59,6 +91,27 @@ const CreateReservation = () => {
       return;
     }
 
+    // Check reservation time
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+    if (!timePattern.test(formData.reservationTime)) {
+      setError('Please enter a valid reservation time.');
+      return;
+    }
+
+    const [hour, minute] = formData.reservationTime.split(':').map(Number);
+    const totalMinutes = hour * 60 + minute;
+
+    if (minute % 5 !== 0) {
+      setError('Reservation time must use 5-minute intervals.');
+      return;
+    }
+
+    if (totalMinutes < 11 * 60 || totalMinutes > 20 * 60) {
+      setError('Reservation time must be between 11:00 and 20:00.');
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -66,6 +119,7 @@ const CreateReservation = () => {
         '/api/reservations',
         {
           ...formData,
+          reservationDate: isoDate,
           numberOfGuests: Number(formData.numberOfGuests)
         },
         {
@@ -79,7 +133,7 @@ const CreateReservation = () => {
         `${response.data.message} Status: ${response.data.reservation.status}.`
       );
 
-      // Clear booking details after successful submission
+      // Reset booking details after successful submission
       setFormData({
         ...formData,
         reservationDate: '',
@@ -98,10 +152,13 @@ const CreateReservation = () => {
     }
   };
 
+  // Show login message if the user is not logged in
   if (!user) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-white shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4">Create Reservation</h1>
+        <h1 className="text-2xl font-bold mb-4">
+          Create Reservation
+        </h1>
         <p>Please log in before making a reservation.</p>
         <Link to="/login" className="text-blue-600">
           Go to Login
@@ -110,6 +167,7 @@ const CreateReservation = () => {
     );
   }
 
+  // Restaurant staff cannot create customer reservations
   if (user.role !== 'customer') {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-white shadow-md rounded">
@@ -158,13 +216,16 @@ const CreateReservation = () => {
           className="w-full mb-4 p-2 border rounded"
         />
 
-        <label className="block mb-2">Reservation Date *</label>
+        <label className="block mb-2">Reservation Date (DD/MM/YYYY) *</label>
         <input
-          type="date"
+          type="text"
           name="reservationDate"
           value={formData.reservationDate}
           onChange={handleChange}
-          min={minDate}
+          placeholder="DD/MM/YYYY"
+          pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+          title="Enter the date in DD/MM/YYYY format"
+          inputMode="numeric"
           required
           className="w-full mb-4 p-2 border rounded"
         />
