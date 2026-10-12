@@ -5,11 +5,12 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import OrderPage from './pages/Order';
+import Orders from './pages/OrderHistory';
 import { CartProvider } from './context/CartContext';
 
 function App() {
   return (
-    <CartProvider>
+   <CartProvider>
       <Router>
         <Navbar />
         <Routes>
@@ -18,6 +19,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/order" element={<OrderPage />} />
+          <Route path="/orders" element={<Orders />} />
         </Routes>
       </Router>
     </CartProvider>

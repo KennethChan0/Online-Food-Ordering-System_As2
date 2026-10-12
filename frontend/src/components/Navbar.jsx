@@ -27,6 +27,7 @@ const Navbar = () => {
               <Link to="/order" className="mr-4">Order Cart</Link>
             )}
             <Link to="/profile" className="mr-4">Profile</Link>
+            <Link to="/orders" className="mr-4">Orders History</Link>
             <button
               onClick={handleLogout}
               className="bg-red-500 px-4 py-2 rounded hover:bg-red-700"
