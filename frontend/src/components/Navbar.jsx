@@ -18,6 +18,7 @@ const Navbar = () => {
           <>
             <Link to="/tasks" className="mr-4">Menu</Link>
             <Link to="/profile" className="mr-4">Profile</Link>
+            <Link to="/reviews" className="mr-4">Reviews</Link>
             <button
               onClick={handleLogout}
               className="bg-red-500 px-4 py-2 rounded hover:bg-red-700"
