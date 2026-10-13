@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Task = require('../models/Task');
+const mongoose = require('mongoose');
 
 
 
@@ -92,4 +93,54 @@ const getOrders = async (req, res) => {
   }
 };
 
-module.exports = { addOrder, getOrders };
+const updateOrderStatus = async (req,res) => {
+    if(!req.user) {
+        return res.status(401).json({message:'Please log in first'});
+    }
+
+    if(req.user.role !=='restaurant'){
+        return res.status(403).json({
+            message: 'Only restaurant staff can update order status.'
+        });
+    }
+
+    if(!mongoose.isValidObjectId(req.params.id)){
+        return res.status(400).json({message:'Invalid order ID.'});
+    }
+
+    const {status} = req.body || {};
+    const allowedStatuses = Order.schema.path('status').enumValues;
+
+    if(!allowedStatuses.includes(status)){
+        return res.status(400).json({
+            message:`Status must be one of: ${allowedStatuses.join(', ')}.`,
+
+        });
+    }
+
+    try{
+        const order = await Order.findById(req.params.id);
+
+        if(!order){
+            return res.status(404).json({message:'Order not found.'});
+        }
+        
+        // firstly save to memory not database
+        order.status = status;
+        //new status to database
+        await order.save();
+        //the customer Id of order change to name and email
+        await order.populate('customer','name email' );
+
+        return res.status(200).json({
+            message:'Order status updated successfully',order,
+        });
+    }catch (error){
+        console.error('Order update failed:', error);
+        return res.status(500).json({
+            message:'Unable to update order status',
+        })
+    }
+}
+
+module.exports = { addOrder, getOrders,updateOrderStatus };
