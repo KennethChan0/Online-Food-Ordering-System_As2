@@ -143,4 +143,33 @@ const updateOrderStatus = async (req,res) => {
     }
 }
 
-module.exports = { addOrder, getOrders,updateOrderStatus };
+const deleteOrder = async (req, res) => {
+  if (!req.user || req.user.role !== 'restaurant') {
+    return res.status(403).json({
+      message: 'Only restaurant staff can delete orders.',
+    });
+  }
+
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid order ID.' });
+  }
+
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Order deleted successfully.',
+    });
+  } catch (error) {
+    console.error('Order deletion failed:', error);
+    return res.status(500).json({
+      message: 'Unable to delete the order.',
+    });
+  }
+};
+
+module.exports = { addOrder, getOrders,updateOrderStatus, deleteOrder };
