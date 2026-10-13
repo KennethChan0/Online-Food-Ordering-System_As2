@@ -12,6 +12,8 @@ const OrderHistory = () => {
     const [selectedStatuses, setSelectedStatuses] = useState({});
     const [updatingId, setUpdatingId] = useState(null);
     const [updateError, setUpdateError] = useState('');
+    const [deletingId, setDeletingId] = useState(null);
+    const [deleteMessage, setDeleteMessage] = useState('');
 
     useEffect(() => {
 
@@ -74,6 +76,38 @@ const OrderHistory = () => {
         }
     };
 
+    const handleDeleteOrder = async (order) => {
+        const confirmed = window.confirm(
+            `Delete order ${order._id}? This cannot be undone.`
+        );
+
+        if (!confirmed) return; // 按 Cancel：不發送任何請求
+
+        setDeletingId(order._id);
+        setUpdateError('');
+        setDeleteMessage('');
+
+        try {
+            await axiosInstance.delete(`/api/orders/${order._id}`, {
+                headers: {
+                    Authorization: `Bearer ${user.token}`,
+                },
+            });
+
+            setOrders((currentOrders) =>
+                currentOrders.filter((currentOrder) => currentOrder._id !== order._id)
+            );
+            setDeleteMessage('Order deleted successfully.');
+        } catch (requestError) {
+            setUpdateError(
+                requestError.response?.data?.message ||
+                'Unable to delete the order.'
+            );
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     if (!user) {
         return <p className="p-6">Please log in to view orders.</p>;
     }
@@ -100,48 +134,19 @@ const OrderHistory = () => {
                 </p>
             )}
 
+            {deleteMessage && (
+                <p role="status" className="text-green-600 mb-4">
+                    {deleteMessage}
+                </p>
+            )}
+
             {!loading && !error && orders.map((order) => (
                 <article
                     key={order._id}
                     className="bg-gray-100 p-4 mb-4 rounded shadow"
                 >
                     <p className="font-bold">Order ID: {order._id}</p>
-                    <p>Status: {order.status}</p>
-                    {user.role === 'restaurant' && (
-                        <div className="my-3 flex items-center gap-2">
-                            <select
-                                aria-label={`Status for order ${order._id}`}
-                                value={selectedStatuses[order._id] || order.status}
-                                onChange={(event) =>
-                                    setSelectedStatuses((current) => ({
-                                        ...current,
-                                        [order._id]: event.target.value,
-                                    }))
-                                }
-                                className="border rounded p-2"
-                            >
-                                {['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'].map(
-                                    (status) => (
-                                        <option key={status} value={status}>
-                                            {status}
-                                        </option>
-                                    )
-                                )}
-                            </select>
-
-                            <button
-                                type="button"
-                                onClick={() => handleUpdateStatus(order)}
-                                disabled={
-                                    updatingId === order._id ||
-                                    (selectedStatuses[order._id] || order.status) === order.status
-                                }
-                                className="bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50"
-                            >
-                                {updatingId === order._id ? 'Updating...' : 'Update'}
-                            </button>
-                        </div>
-                    )}
+                    
                     <p>Placed: {new Date(order.createdAt).toLocaleString()}</p>
 
                     {user.role === 'restaurant' && (
@@ -164,6 +169,53 @@ const OrderHistory = () => {
                     <p className="font-bold mt-3">
                         Total: {money(order.totalAmount)}
                     </p>
+                    <p>Status: {order.status}</p>
+                    {user.role === 'restaurant' && (
+                        <div className="my-3 flex items-center gap-2">
+                            <select
+                                aria-label={`Status for order ${order._id}`}
+                                value={selectedStatuses[order._id] || order.status}
+                                onChange={(event) =>
+                                    setSelectedStatuses((current) => ({
+                                        ...current,
+                                        [order._id]: event.target.value,
+                                    }))
+                                }
+                                className="border rounded p-2"
+                            >
+                                {['Pending', 'Preparing', 'Ready', 'Completed'].map(
+                                    (status) => (
+                                        <option key={status} value={status}>
+                                            {status}
+                                        </option>
+                                    )
+                                )}
+                            </select>
+
+                            <button
+                                type="button"
+                                onClick={() => handleUpdateStatus(order)}
+                                disabled={
+                                    updatingId === order._id ||
+                                    (selectedStatuses[order._id] || order.status) === order.status
+                                }
+                                className="bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50"
+                            >
+                                {updatingId === order._id ? 'Updating...' : 'Update'}
+                            </button>
+                        </div>
+                    )}
+                    {user.role === 'restaurant' && (
+                        <button
+                            type="button"
+                            aria-label={`Delete order ${order._id}`}
+                            onClick={() => handleDeleteOrder(order)}
+                            disabled={deletingId === order._id}
+                            className="bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                        >
+                            {deletingId === order._id ? 'Deleting...' : '× Delete Order'}
+                        </button>
+                    )}
                 </article>
             ))}
         </main>
