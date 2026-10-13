@@ -10,7 +10,7 @@ import Tasks from './pages/Tasks';
 import Review from './pages/Review';
 
 // Teammates' Order Management
-import OrderPage from './pages/order';
+import OrderPage from './pages/Order';
 import Orders from './pages/OrderHistory';
 import { CartProvider } from './context/CartContext';
 
