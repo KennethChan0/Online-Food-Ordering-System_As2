@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import CreateReservation from './pages/CreateReservation';
+import StaffReservations from './pages/StaffReservations';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/reservations/new" element={<CreateReservation />} />
+        <Route path="/staff/reservations" element={<StaffReservations />} />
       </Routes>
     </Router>
   );

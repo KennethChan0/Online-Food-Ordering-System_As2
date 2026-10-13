@@ -1,4 +1,3 @@
-
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -16,6 +15,9 @@ app.use('/api/tasks', require('./routes/taskRoutes'));
 
 // Table reservation routes - US19
 app.use('/api/reservations', require('./routes/reservationRoutes'));
+
+// US21 - Restaurant staff reservation viewing
+app.use('/api/staff/reservations', require('./routes/staffReservationRoutes'));
 
 // Export the app object for testing
 if (require.main === module) {

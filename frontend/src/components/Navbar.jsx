@@ -1,4 +1,3 @@
-
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,6 +26,12 @@ const Navbar = () => {
             {user.role === 'customer' && (
               <Link to="/reservations/new" className="mr-4">
                 Create Reservation
+              </Link>
+            )}
+
+            {user.role === 'restaurant' && (
+              <Link to="/staff/reservations" className="mr-4">
+                Customer Reservations
               </Link>
             )}
 
