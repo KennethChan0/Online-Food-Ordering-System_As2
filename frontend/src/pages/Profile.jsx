@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const Profile = () => {
   const { user, logout } = useAuth(); // Access user token from context
+  const { clearCart } = useCart();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
@@ -80,7 +82,7 @@ const Profile = () => {
         headers: { Authorization: `Bearer ${token}` },
         data: { confirmDelete: true },
       });
-
+      clearCart();
       logout();
       navigate('/login', { replace: true });
       window.alert(response.data.message);
