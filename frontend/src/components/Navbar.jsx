@@ -31,9 +31,15 @@ const Navbar = () => {
             <Link to="/orders" className="mr-4">Orders History</Link>
 
             {user.role === 'customer' && (
-              <Link to="/reservations/new" className="mr-4">
-                Create Reservation
-              </Link>
+              <>
+                <Link to="/reservations/new" className="mr-4">
+                  Create Reservation
+                </Link>
+
+                <Link to="/reservations/my" className="mr-4">
+                  My Reservations
+                </Link>
+              </>
             )}
 
             {user.role === 'restaurant' && (
