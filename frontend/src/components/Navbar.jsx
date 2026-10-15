@@ -29,6 +29,25 @@ const Navbar = () => {
             <Link to="/profile" className="mr-4">Profile</Link>
             <Link to="/reviews" className="mr-4">Reviews</Link>
             <Link to="/orders" className="mr-4">Orders History</Link>
+
+            {user.role === 'customer' && (
+              <>
+                <Link to="/reservations/new" className="mr-4">
+                  Create Reservation
+                </Link>
+
+                <Link to="/reservations/my" className="mr-4">
+                  My Reservations
+                </Link>
+              </>
+            )}
+
+            {user.role === 'restaurant' && (
+              <Link to="/staff/reservations" className="mr-4">
+                Customer Reservations
+              </Link>
+            )}
+
             <button
               onClick={handleLogout}
               className="bg-red-500 px-4 py-2 rounded hover:bg-red-700"
@@ -38,7 +57,10 @@ const Navbar = () => {
           </>
         ) : (
           <>
-            <Link to="/login" className="mr-4">Login</Link>
+            <Link to="/login" className="mr-4">
+              Login
+            </Link>
+
             <Link
               to="/register"
               className="bg-green-500 px-4 py-2 rounded hover:bg-green-700"
