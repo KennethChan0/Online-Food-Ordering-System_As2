@@ -48,6 +48,7 @@ const createReservation = async (req, res) => {
     }
 
     const namePattern = /^[\p{L}\s'-]+$/u;
+
     if (!namePattern.test(fullName.trim())) {
       return res.status(400).json({
         message: 'Please enter a valid name.'
@@ -55,6 +56,7 @@ const createReservation = async (req, res) => {
     }
 
     const phonePattern = /^0\d{9}$/;
+
     if (!phonePattern.test(phoneNumber)) {
       return res.status(400).json({
         message: 'Please enter a valid 10-digit Australian phone number.'
@@ -62,6 +64,7 @@ const createReservation = async (req, res) => {
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailPattern.test(email)) {
       return res.status(400).json({
         message: 'Please enter a valid email.'
@@ -78,6 +81,7 @@ const createReservation = async (req, res) => {
     }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
     if (!datePattern.test(reservationDate)) {
       return res.status(400).json({
         message: 'Please enter a valid reservation date.'
@@ -87,6 +91,7 @@ const createReservation = async (req, res) => {
     const [year, month, day] = reservationDate.split('-').map(Number);
     const selectedDate = new Date(year, month - 1, day);
     const today = new Date();
+
     today.setHours(0, 0, 0, 0);
 
     if (
@@ -101,6 +106,7 @@ const createReservation = async (req, res) => {
     }
 
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
     if (!timePattern.test(reservationTime)) {
       return res.status(400).json({
         message: 'Please enter a valid reservation time.'
@@ -143,6 +149,7 @@ const createReservation = async (req, res) => {
 
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       message: 'Unable to create reservation.'
     });
@@ -185,6 +192,7 @@ const getMyReservations = async (req, res) => {
 
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       message: 'Unable to retrieve reservations.'
     });
@@ -225,9 +233,11 @@ const updateMyReservation = async (req, res) => {
       });
     }
 
-    if (reservation.status === 'Cancelled') {
+    // NEW US20 RULE:
+    // Customers can only edit Pending reservations.
+    if (reservation.status !== 'Pending') {
       return res.status(400).json({
-        message: 'Cancelled reservations cannot be updated.'
+        message: 'Only pending reservations can be updated.'
       });
     }
 
@@ -265,6 +275,7 @@ const updateMyReservation = async (req, res) => {
     }
 
     const namePattern = /^[\p{L}\s'-]+$/u;
+
     if (!namePattern.test(fullName.trim())) {
       return res.status(400).json({
         message: 'Please enter a valid name.'
@@ -272,6 +283,7 @@ const updateMyReservation = async (req, res) => {
     }
 
     const phonePattern = /^0\d{9}$/;
+
     if (!phonePattern.test(phoneNumber)) {
       return res.status(400).json({
         message: 'Please enter a valid 10-digit Australian phone number.'
@@ -279,6 +291,7 @@ const updateMyReservation = async (req, res) => {
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailPattern.test(email)) {
       return res.status(400).json({
         message: 'Please enter a valid email.'
@@ -296,6 +309,7 @@ const updateMyReservation = async (req, res) => {
 
     // Backend keeps ISO format: YYYY-MM-DD
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
     if (!datePattern.test(reservationDate)) {
       return res.status(400).json({
         message: 'Please enter a valid reservation date.'
@@ -305,6 +319,7 @@ const updateMyReservation = async (req, res) => {
     const [year, month, day] = reservationDate.split('-').map(Number);
     const selectedDate = new Date(year, month - 1, day);
     const today = new Date();
+
     today.setHours(0, 0, 0, 0);
 
     if (
@@ -319,6 +334,7 @@ const updateMyReservation = async (req, res) => {
     }
 
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
     if (!timePattern.test(reservationTime)) {
       return res.status(400).json({
         message: 'Please enter a valid reservation time.'
@@ -359,6 +375,7 @@ const updateMyReservation = async (req, res) => {
 
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       message: 'Unable to update reservation.'
     });
@@ -398,9 +415,43 @@ const cancelMyReservation = async (req, res) => {
       });
     }
 
+    // Cancelled reservations cannot be cancelled again.
     if (reservation.status === 'Cancelled') {
       return res.status(400).json({
         message: 'Reservation is already cancelled.'
+      });
+    }
+
+    // NEW US20 RULE:
+    // Confirmed reservations require at least 24 hours' notice.
+    if (reservation.status === 'Confirmed') {
+
+      // Brisbane uses UTC+10 throughout the year.
+      const reservationDateTime = new Date(
+        `${reservation.reservationDate}T${reservation.reservationTime}:00+10:00`
+      );
+
+      if (Number.isNaN(reservationDateTime.getTime())) {
+        return res.status(400).json({
+          message: 'Reservation date or time is invalid.'
+        });
+      }
+
+      const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+
+      const timeUntilReservation =
+        reservationDateTime.getTime() - Date.now();
+
+      // Exactly 24 hours before the reservation is allowed.
+      if (timeUntilReservation < twentyFourHoursInMs) {
+        return res.status(400).json({
+          message: 'Confirmed reservations can only be cancelled at least 24 hours before the reservation time.'
+        });
+      }
+
+    } else if (reservation.status !== 'Pending') {
+      return res.status(400).json({
+        message: 'This reservation cannot be cancelled.'
       });
     }
 
@@ -416,6 +467,7 @@ const cancelMyReservation = async (req, res) => {
 
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       message: 'Unable to cancel reservation.'
     });
