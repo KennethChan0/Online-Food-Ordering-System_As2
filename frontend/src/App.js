@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
+import CreateReservation from './pages/CreateReservation';
+import StaffReservations from './pages/StaffReservations';
 
 // Your Review Management
 import Review from './pages/Review';
@@ -32,6 +34,10 @@ function App() {
           {/* Order Management */}
           <Route path="/order" element={<OrderPage />} />
           <Route path="/orders" element={<Orders />} />
+
+          {/* Reservation Management */}
+          <Route path="/reservations/new" element={<CreateReservation />} />
+          <Route path="/staff/reservations" element={<StaffReservations />} />
         </Routes>
 
       </Router>
