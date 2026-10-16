@@ -11,32 +11,55 @@ const formatDateAU = (isoDate) => {
   return `${day}/${month}/${year}`;
 };
 
-// Convert Australian date to backend format
-const convertDateToISO = (australianDate) => {
-  const match = australianDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+// Get today's date in YYYY-MM-DD format
+const getTodayISO = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
 
-  if (!match) return null;
+  return `${year}-${month}-${day}`;
+};
 
-  const day = Number(match[1]);
+// Check valid date and prevent past dates
+const isValidReservationDate = (isoDate) => {
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return false;
+
+  const year = Number(match[1]);
   const month = Number(match[2]);
-  const year = Number(match[3]);
+  const day = Number(match[3]);
 
   const selectedDate = new Date(year, month - 1, day);
   const today = new Date();
-
   today.setHours(0, 0, 0, 0);
 
-  if (
-    selectedDate.getFullYear() !== year ||
-    selectedDate.getMonth() !== month - 1 ||
-    selectedDate.getDate() !== day ||
-    selectedDate < today
-  ) {
-    return null;
-  }
-
-  return `${match[3]}-${match[2]}-${match[1]}`;
+  return (
+    selectedDate.getFullYear() === year &&
+    selectedDate.getMonth() === month - 1 &&
+    selectedDate.getDate() === day &&
+    selectedDate >= today
+  );
 };
+
+// Reservation times: 11:00 AM to 8:00 PM, every 30 minutes
+const reservationTimeOptions = Array.from({ length: 19 }, (_, index) => {
+  const totalMinutes = 11 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+
+  const value =
+    `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+  const displayHour = hour % 12 || 12;
+  const period = hour >= 12 ? 'PM' : 'AM';
+
+  const label =
+    `${displayHour}:${String(minute).padStart(2, '0')} ${period}`;
+
+  return { value, label };
+});
 
 // US20 - Check whether the customer can cancel a reservation
 const canCancelReservation = (reservation, currentTime = Date.now()) => {
@@ -70,6 +93,7 @@ const canCancelReservation = (reservation, currentTime = Date.now()) => {
 
 const ManageReservations = () => {
   const { user } = useAuth();
+  const todayISO = getTodayISO();
 
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,10 +170,10 @@ const ManageReservations = () => {
     setEditingId(reservation._id);
 
     setEditForm({
-      fullName: reservation.fullName,
+      fullName: (reservation.fullName || '').replace(/\p{N}/gu, ''),
       phoneNumber: reservation.phoneNumber,
       email: reservation.email,
-      reservationDate: formatDateAU(reservation.reservationDate),
+      reservationDate: reservation.reservationDate,
       reservationTime: reservation.reservationTime,
       numberOfGuests: reservation.numberOfGuests,
       specialRequests: reservation.specialRequests || ''
@@ -157,9 +181,13 @@ const ManageReservations = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setEditForm({
       ...editForm,
-      [e.target.name]: e.target.value
+      [name]: name === 'fullName'
+        ? value.replace(/\p{N}/gu, '')
+        : value
     });
   };
 
@@ -181,10 +209,11 @@ const ManageReservations = () => {
       return;
     }
 
-    const isoDate = convertDateToISO(editForm.reservationDate);
+    // Date picker already uses YYYY-MM-DD format
+    const isoDate = editForm.reservationDate;
 
-    if (!isoDate) {
-      setError('Please enter a valid future date in DD/MM/YYYY format.');
+    if (!isValidReservationDate(isoDate)) {
+      setError('Please select a valid date that is not in the past.');
       return;
     }
 
@@ -208,12 +237,12 @@ const ManageReservations = () => {
       .map(Number);
 
     if (
-      minute % 5 !== 0 ||
+      minute % 30 !== 0 ||
       hour * 60 + minute < 11 * 60 ||
       hour * 60 + minute > 20 * 60
     ) {
       setError(
-        'Reservation time must be between 11:00 and 20:00, using 5-minute intervals.'
+        'Reservation time must be between 11:00 and 20:00, using 30-minute intervals.'
       );
       return;
     }
@@ -431,8 +460,12 @@ const ManageReservations = () => {
                   value={editForm.fullName}
                   onChange={handleChange}
                   required
-                  className="w-full mb-4 p-2 border rounded"
+                  className="w-full mb-1 p-2 border rounded"
                 />
+
+                <p className="text-sm text-gray-600 mb-4">
+                  Letters, spaces, hyphens and apostrophes only. No numbers allowed.
+                </p>
 
                 <label className="block mb-2">
                   Phone Number *
@@ -462,16 +495,15 @@ const ManageReservations = () => {
                 />
 
                 <label className="block mb-2">
-                  Reservation Date (DD/MM/YYYY) *
+                  Reservation Date *
                 </label>
 
                 <input
-                  type="text"
+                  type="date"
                   name="reservationDate"
                   value={editForm.reservationDate}
                   onChange={handleChange}
-                  placeholder="DD/MM/YYYY"
-                  pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+                  min={todayISO}
                   required
                   className="w-full mb-4 p-2 border rounded"
                 />
@@ -480,17 +512,24 @@ const ManageReservations = () => {
                   Reservation Time *
                 </label>
 
-                <input
-                  type="time"
+                <p className="text-sm text-gray-600 mb-2">
+                  Available from 11:00 AM to 8:00 PM (30-minute intervals).
+                </p>
+
+                <select
                   name="reservationTime"
                   value={editForm.reservationTime}
                   onChange={handleChange}
-                  min="11:00"
-                  max="20:00"
-                  step="300"
                   required
                   className="w-full mb-4 p-2 border rounded"
-                />
+                >
+                  <option value="">Select a reservation time</option>
+                  {reservationTimeOptions.map((time) => (
+                    <option key={time.value} value={time.value}>
+                      {time.label}
+                    </option>
+                  ))}
+                </select>
 
                 <label className="block mb-2">
                   Number of Guests *
