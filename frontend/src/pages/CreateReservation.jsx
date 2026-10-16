@@ -1,43 +1,65 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 
-// Convert Australian date DD/MM/YYYY to YYYY-MM-DD
-const convertDateToISO = (australianDate) => {
-  const match = australianDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+// Get today's date in YYYY-MM-DD format
+const getTodayISO = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+// Check valid date and prevent past dates
+const isValidReservationDate = (isoDate) => {
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (!match) {
-    return null;
+    return false;
   }
 
-  const day = Number(match[1]);
+  const year = Number(match[1]);
   const month = Number(match[2]);
-  const year = Number(match[3]);
+  const day = Number(match[3]);
 
   const selectedDate = new Date(year, month - 1, day);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Check valid date and prevent past dates
-  if (
-    selectedDate.getFullYear() !== year ||
-    selectedDate.getMonth() !== month - 1 ||
-    selectedDate.getDate() !== day ||
-    selectedDate < today
-  ) {
-    return null;
-  }
-
-  return `${match[3]}-${match[2]}-${match[1]}`;
+  return (
+    selectedDate.getFullYear() === year &&
+    selectedDate.getMonth() === month - 1 &&
+    selectedDate.getDate() === day &&
+    selectedDate >= today
+  );
 };
+
+// Reservation times: 11:00 AM to 8:00 PM, every 30 minutes
+const reservationTimeOptions = Array.from({ length: 19 }, (_, index) => {
+  const totalMinutes = 11 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+
+  const value =
+    `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+  const displayHour = hour % 12 || 12;
+  const period = hour >= 12 ? 'PM' : 'AM';
+
+  const label =
+    `${displayHour}:${String(minute).padStart(2, '0')} ${period}`;
+
+  return { value, label };
+});
 
 const CreateReservation = () => {
   const { user } = useAuth();
 
   const [formData, setFormData] = useState({
-    fullName: user?.name || '',
+    fullName: (user?.name || '').replace(/\p{N}/gu, ''),
     phoneNumber: '',
     email: user?.email || '',
     reservationDate: '',
@@ -50,10 +72,16 @@ const CreateReservation = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const todayISO = getTodayISO();
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: name === 'fullName'
+        ? value.replace(/\p{N}/gu, '')
+        : value
     });
   };
 
@@ -74,11 +102,12 @@ const CreateReservation = () => {
       return;
     }
 
-    // Convert DD/MM/YYYY to YYYY-MM-DD
-    const isoDate = convertDateToISO(formData.reservationDate);
+    // Check reservation date
+    // Date picker already uses YYYY-MM-DD format
+    const isoDate = formData.reservationDate;
 
-    if (!isoDate) {
-      setError('Please enter a valid future date in DD/MM/YYYY format.');
+    if (!isValidReservationDate(isoDate)) {
+      setError('Please select a valid date that is not in the past.');
       return;
     }
 
@@ -95,15 +124,15 @@ const CreateReservation = () => {
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
     if (!timePattern.test(formData.reservationTime)) {
-      setError('Please enter a valid reservation time.');
+      setError('Please select a valid reservation time.');
       return;
     }
 
     const [hour, minute] = formData.reservationTime.split(':').map(Number);
     const totalMinutes = hour * 60 + minute;
 
-    if (minute % 5 !== 0) {
-      setError('Reservation time must use 5-minute intervals.');
+    if (minute % 30 !== 0) {
+      setError('Reservation time must use 30-minute intervals.');
       return;
     }
 
@@ -191,8 +220,11 @@ const CreateReservation = () => {
           value={formData.fullName}
           onChange={handleChange}
           required
-          className="w-full mb-4 p-2 border rounded"
+          className="w-full mb-1 p-2 border rounded"
         />
+        <p className="text-sm text-gray-600 mb-4">
+          Letters, spaces, hyphens and apostrophes only. No numbers allowed.
+        </p>
 
         <label className="block mb-2">Phone Number *</label>
         <input
@@ -216,32 +248,37 @@ const CreateReservation = () => {
           className="w-full mb-4 p-2 border rounded"
         />
 
-        <label className="block mb-2">Reservation Date (DD/MM/YYYY) *</label>
+        <label className="block mb-2">Reservation Date *</label>
         <input
-          type="text"
+          type="date"
           name="reservationDate"
           value={formData.reservationDate}
           onChange={handleChange}
-          placeholder="DD/MM/YYYY"
-          pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
-          title="Enter the date in DD/MM/YYYY format"
-          inputMode="numeric"
+          min={todayISO}
           required
           className="w-full mb-4 p-2 border rounded"
         />
 
         <label className="block mb-2">Reservation Time *</label>
-        <input
-          type="time"
+        <p className="text-sm text-gray-600 mb-2">
+          Available from 11:00 AM to 8:00 PM (30-minute intervals).
+        </p>
+
+        <select
           name="reservationTime"
           value={formData.reservationTime}
           onChange={handleChange}
-          min="11:00"
-          max="20:00"
-          step="300"
           required
           className="w-full mb-4 p-2 border rounded"
-        />
+        >
+          <option value="">Select a reservation time</option>
+
+          {reservationTimeOptions.map((time) => (
+            <option key={time.value} value={time.value}>
+              {time.label}
+            </option>
+          ))}
+        </select>
 
         <label className="block mb-2">Number of Guests *</label>
         <input
