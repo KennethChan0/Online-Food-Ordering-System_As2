@@ -115,9 +115,9 @@ const createReservation = async (req, res) => {
 
     const [hour, minute] = reservationTime.split(':').map(Number);
 
-    if (minute % 5 !== 0) {
+    if (minute % 30 !== 0) {
       return res.status(400).json({
-        message: 'Reservation time must use 5-minute intervals.'
+        message: 'Reservation time must use 30-minute intervals.'
       });
     }
 
@@ -202,40 +202,10 @@ const getMyReservations = async (req, res) => {
 // US20 - Update own reservation
 const updateMyReservation = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        message: 'Please log in to update your reservation.'
-      });
-    }
+    const reservation = req.reservation;
 
-    if (req.user.role !== 'customer') {
-      return res.status(403).json({
-        message: 'Only customers can update their reservations.'
-      });
-    }
-
-    // Check reservation ID
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({
-        message: 'Invalid reservation ID.'
-      });
-    }
-
-    // Find only a reservation owned by this customer
-    const reservation = await Reservation.findOne({
-      _id: req.params.id,
-      customer: req.user._id
-    });
-
-    if (!reservation) {
-      return res.status(404).json({
-        message: 'Reservation not found.'
-      });
-    }
-
-    // NEW US20 RULE:
-    // Customers can only edit Pending reservations.
-    if (reservation.status !== 'Pending') {
+    // US20 - Use the Reservation Model's encapsulated edit rule.
+    if (!reservation.canCustomerEdit()) {
       return res.status(400).json({
         message: 'Only pending reservations can be updated.'
       });
@@ -343,9 +313,9 @@ const updateMyReservation = async (req, res) => {
 
     const [hour, minute] = reservationTime.split(':').map(Number);
 
-    if (minute % 5 !== 0) {
+    if (minute % 30 !== 0) {
       return res.status(400).json({
-        message: 'Reservation time must use 5-minute intervals.'
+        message: 'Reservation time must use 30-minute intervals.'
       });
     }
 
@@ -385,73 +355,14 @@ const updateMyReservation = async (req, res) => {
 // US20 - Cancel own reservation
 const cancelMyReservation = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        message: 'Please log in to cancel your reservation.'
-      });
-    }
+    const reservation = req.reservation;
 
-    if (req.user.role !== 'customer') {
-      return res.status(403).json({
-        message: 'Only customers can cancel their reservations.'
-      });
-    }
+    // US20 - Use the Reservation Model's encapsulated cancellation rule.
+    const cancellationResult = reservation.canCustomerCancel();
 
-    if (!mongoose.isValidObjectId(req.params.id)) {
+    if (!cancellationResult.allowed) {
       return res.status(400).json({
-        message: 'Invalid reservation ID.'
-      });
-    }
-
-    // Find only a reservation owned by this customer
-    const reservation = await Reservation.findOne({
-      _id: req.params.id,
-      customer: req.user._id
-    });
-
-    if (!reservation) {
-      return res.status(404).json({
-        message: 'Reservation not found.'
-      });
-    }
-
-    // Cancelled reservations cannot be cancelled again.
-    if (reservation.status === 'Cancelled') {
-      return res.status(400).json({
-        message: 'Reservation is already cancelled.'
-      });
-    }
-
-    // NEW US20 RULE:
-    // Confirmed reservations require at least 24 hours' notice.
-    if (reservation.status === 'Confirmed') {
-
-      // Brisbane uses UTC+10 throughout the year.
-      const reservationDateTime = new Date(
-        `${reservation.reservationDate}T${reservation.reservationTime}:00+10:00`
-      );
-
-      if (Number.isNaN(reservationDateTime.getTime())) {
-        return res.status(400).json({
-          message: 'Reservation date or time is invalid.'
-        });
-      }
-
-      const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
-
-      const timeUntilReservation =
-        reservationDateTime.getTime() - Date.now();
-
-      // Exactly 24 hours before the reservation is allowed.
-      if (timeUntilReservation < twentyFourHoursInMs) {
-        return res.status(400).json({
-          message: 'Confirmed reservations can only be cancelled at least 24 hours before the reservation time.'
-        });
-      }
-
-    } else if (reservation.status !== 'Pending') {
-      return res.status(400).json({
-        message: 'This reservation cannot be cancelled.'
+        message: cancellationResult.message
       });
     }
 

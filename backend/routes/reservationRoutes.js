@@ -9,6 +9,7 @@ const {
 } = require('../controllers/reservationController');
 
 const { protect } = require('../middleware/authMiddleware');
+const { checkReservationOwnership } = require('../middleware/reservationOwnership');
 
 // US19 - Create reservation
 router.post('/', protect, createReservation);
@@ -17,9 +18,19 @@ router.post('/', protect, createReservation);
 router.get('/my', protect, getMyReservations);
 
 // US20 - Update own reservation
-router.put('/:id', protect, updateMyReservation);
+router.put(
+  '/:id',
+  protect,
+  checkReservationOwnership('update'),
+  updateMyReservation
+);
 
 // US20 - Cancel own reservation
-router.patch('/:id/cancel', protect, cancelMyReservation);
+router.patch(
+  '/:id/cancel',
+  protect,
+  checkReservationOwnership('cancel'),
+  cancelMyReservation
+);
 
 module.exports = router;
