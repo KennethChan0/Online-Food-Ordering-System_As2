@@ -2,6 +2,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { getProfileRules } = require('../strategies/profileRules');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -45,17 +46,8 @@ const getProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const profile = {
-            name: user.name,
-            email: user.email,
-            phone: user.phone || '',
-            role: user.role
-        };
-
-        if (user.role === 'restaurant') {
-            profile.restaurantAddress = user.restaurantAddress || '';
-        }
-        return res.status(200).json(profile);
+        const rules = getProfileRules(user.role);
+        return res.status(200).json(rules.buildProfile(user));
     } catch (error) {
         return res.status(500).json({ message: 'Failed to load profile. Please try again,' });
     }
@@ -78,92 +70,23 @@ const updateUserProfile = async (req, res) => {
         }
 
         const body = req.body;
+        const rules = getProfileRules(user.role);
+        const errorMessage = rules.validate(body);
 
-        if (!body || typeof body !== 'object' || Array.isArray(body)) {
-            return res.status(400).json({
-                message: 'Invalid profile data',
-            });
-        }
-
-        const allowedFields = user.role === 'restaurant'
-            ? ['name', 'phone', 'restaurantAddress']
-            : ['name', 'phone'];
-
-        if (Object.keys(body).some((field) => !allowedFields.includes(field))) {
-            return res.status(400).json({
-                message: 'Only editable profile fields can be updated',
-            });
-        }
-
-        if (typeof body.name !== 'string' || typeof body.phone !== 'string') {
-            return res.status(400).json({
-                message: 'Name and phone number are required',
-            });
-        }
-
-        const name = body.name.trim();
-        const phone = body.phone.trim();
-        const digits = phone.replace(/\D/g, '');
-
-        if (!name || name.length > 80) {
-            return res.status(400).json({
-                message: 'Name must contain 1 to 80 characters',
-            });
-        }
-
-        if (
-            !/^\+?[0-9 ()-]+$/.test(phone) ||
-            phone.length > 25 ||
-            digits.length < 7 ||
-            digits.length > 15
-        ) {
-            return res.status(400).json({
-                message: 'Please enter a valid phone number',
-            });
-        }
-
-        let restaurantAddress = '';
-
-        if (user.role === 'restaurant') {
-            if (typeof body.restaurantAddress !== 'string') {
-                return res.status(400).json({
-                    message: 'Restaurant address is required',
-                });
-            }
-
-            restaurantAddress = body.restaurantAddress.trim();
-
-            if (!restaurantAddress || restaurantAddress.length > 300) {
-                return res.status(400).json({
-                    message: 'Restaurant address must contain 1 to 300 characters',
-                });
-            }
+        if (errorMessage) {
+            return res.status(400).json({ message: errorMessage });
         }
 
         // Change the document only after all validation passes.
-        user.name = name;
-        user.phone = phone;
-
-        if (user.role === 'restaurant') {
-            user.restaurantAddress = restaurantAddress;
+        for (const field of rules.getEditableFields()) {
+            user[field] = body[field].trim();
         }
 
         const updatedUser = await user.save();
 
-        const profile = {
-            name: updatedUser.name,
-            email: updatedUser.email,
-            phone: updatedUser.phone,
-            role: updatedUser.role,
-        };
-
-        if (updatedUser.role === 'restaurant') {
-            profile.restaurantAddress = updatedUser.restaurantAddress;
-        }
-
         return res.status(200).json({
             message: 'Profile updated successfully',
-            profile,
+            profile: rules.buildProfile(updatedUser),
         });
     } catch (error) {
         if (error.name === 'ValidationError') {

@@ -41,6 +41,7 @@ describe('User Profile Management Functional Testing', function () {
         // AT-01: Positive Test
         it('AT-01: should view own profile successfully', async function () {
             const user = mockUser();
+            user.restaurantAddress = 'Not exposed for a customer';
 
             const query = {
                 select: sinon.stub().resolves(user)
@@ -69,6 +70,26 @@ describe('User Profile Management Functional Testing', function () {
             });
         });
 
+        // AT-02: Negative Test
+        it('AT-02: should reject viewing another account before querying the database', async function () {
+            const findStub = sinon.stub(User, 'findById');
+
+            const req = {
+                user: { id: 'user1' },
+                query: { userId: 'user2' }
+            };
+
+            const res = mockResponse();
+
+            await getProfile(req, res);
+
+            sinon.assert.calledOnceWithExactly(res.status, 400);
+            sinon.assert.calledOnceWithExactly(res.json, {
+                message: 'You can only view your own profile'
+            });
+            sinon.assert.notCalled(findStub);
+        });
+
         // AT-03: Negative Test
         it('AT-03: should return 404 if profile is missing', async function () {
             const query = {
@@ -89,6 +110,31 @@ describe('User Profile Management Functional Testing', function () {
             sinon.assert.calledOnceWithExactly(res.status, 404);
             sinon.assert.calledOnceWithExactly(res.json, {
                 message: 'User not found'
+            });
+        });
+
+        it('should include the restaurant address when viewing a restaurant profile', async function () {
+            const user = {
+                ...mockUser(),
+                role: 'restaurant',
+                restaurantAddress: '123 Queen Street'
+            };
+
+            const query = { select: sinon.stub().resolves(user) };
+            sinon.stub(User, 'findById').returns(query);
+
+            const req = { user: { id: 'user1' }, query: {} };
+            const res = mockResponse();
+
+            await getProfile(req, res);
+
+            sinon.assert.calledOnceWithExactly(res.status, 200);
+            sinon.assert.calledOnceWithExactly(res.json, {
+                name: 'John',
+                email: 'john@example.com',
+                phone: '0412345678',
+                role: 'restaurant',
+                restaurantAddress: '123 Queen Street'
             });
         });
     });
@@ -188,6 +234,109 @@ describe('User Profile Management Functional Testing', function () {
                 message: 'Please enter a valid phone number'
             });
             sinon.assert.notCalled(user.save);
+        });
+
+        it('should trim and update all editable restaurant profile fields', async function () {
+            const user = {
+                ...mockUser(),
+                role: 'restaurant',
+                restaurantAddress: 'Old address'
+            };
+            user.save.callsFake(async () => user);
+            sinon.stub(User, 'findById').resolves(user);
+
+            const req = {
+                user: { id: 'user1' },
+                query: {},
+                body: {
+                    name: '  New Restaurant  ',
+                    phone: '  +61 (7) 1234-5678  ',
+                    restaurantAddress: '  123 Queen Street  '
+                }
+            };
+            const res = mockResponse();
+
+            await updateUserProfile(req, res);
+
+            expect(user.name).to.equal('New Restaurant');
+            expect(user.phone).to.equal('+61 (7) 1234-5678');
+            expect(user.restaurantAddress).to.equal('123 Queen Street');
+            sinon.assert.calledOnce(user.save);
+            sinon.assert.calledOnceWithExactly(res.status, 200);
+            sinon.assert.calledOnceWithExactly(res.json, {
+                message: 'Profile updated successfully',
+                profile: {
+                    name: 'New Restaurant',
+                    email: 'john@example.com',
+                    phone: '+61 (7) 1234-5678',
+                    role: 'restaurant',
+                    restaurantAddress: '123 Queen Street'
+                }
+            });
+        });
+
+        const invalidAddresses = [
+            { label: 'missing', value: undefined, message: 'Restaurant address is required' },
+            { label: 'non-string', value: 123, message: 'Restaurant address is required' },
+            { label: 'blank', value: '   ', message: 'Restaurant address must contain 1 to 300 characters' },
+            { label: 'overlong', value: 'a'.repeat(301), message: 'Restaurant address must contain 1 to 300 characters' }
+        ];
+
+        for (const { label, value, message } of invalidAddresses) {
+            it(`should reject a ${label} restaurant address without changing the user`, async function () {
+                const user = {
+                    ...mockUser(),
+                    role: 'restaurant',
+                    restaurantAddress: 'Original address'
+                };
+                sinon.stub(User, 'findById').resolves(user);
+
+                const req = {
+                    user: { id: 'user1' },
+                    query: {},
+                    body: {
+                        name: 'Changed name',
+                        phone: '0411111111',
+                        restaurantAddress: value
+                    }
+                };
+                const res = mockResponse();
+
+                await updateUserProfile(req, res);
+
+                sinon.assert.calledOnceWithExactly(res.status, 400);
+                sinon.assert.calledOnceWithExactly(res.json, { message });
+                sinon.assert.notCalled(user.save);
+                expect(user.name).to.equal('John');
+                expect(user.phone).to.equal('0412345678');
+                expect(user.restaurantAddress).to.equal('Original address');
+            });
+        }
+
+        it('should reject a customer attempting to update a restaurant address', async function () {
+            const user = mockUser();
+            sinon.stub(User, 'findById').resolves(user);
+
+            const req = {
+                user: { id: 'user1' },
+                query: {},
+                body: {
+                    name: 'John Updated',
+                    phone: '0411111111',
+                    restaurantAddress: '123 Queen Street'
+                }
+            };
+            const res = mockResponse();
+
+            await updateUserProfile(req, res);
+
+            sinon.assert.calledOnceWithExactly(res.status, 400);
+            sinon.assert.calledOnceWithExactly(res.json, {
+                message: 'Only editable profile fields can be updated'
+            });
+            sinon.assert.notCalled(user.save);
+            expect(user.name).to.equal('John');
+            expect(user.phone).to.equal('0412345678');
         });
     });
 
