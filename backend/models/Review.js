@@ -26,5 +26,23 @@ const reviewSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// OOP Encapsulation: Review manages its own update logic
+reviewSchema.methods.updateDetails = function (rating, comment) {
+
+  if (rating !== undefined) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new Error('Invalid rating');
+    }
+    this.rating = rating;
+  }
+
+  if (comment !== undefined) {
+    if (typeof comment !== 'string' || !comment.trim()) {
+      throw new Error('Invalid comment');
+    }
+    this.comment = comment.trim();
+  }
+};
+
 // Export Review model
 module.exports = mongoose.model('Review', reviewSchema);

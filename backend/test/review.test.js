@@ -171,44 +171,58 @@ describe('Review Management Functional Testing', function () {
     // =====================================================
     describe('US14: Edit Reviews', function () {
 
-        // VT-05: Positive Test
-        it('VT-05: should allow a customer to edit their own review', async function () {
 
-            const review = {
-                _id: reviewId,
-                user: 'customer1',
-                rating: 4,
-                comment: 'Good food',
-                save: sinon.stub()
-            };
+    // VT-05: Positive Test
+    it('VT-05: should allow a customer to edit their own review', async function () {
 
-            review.save.callsFake(async () => review);
+        const review = {
+            _id: reviewId,
+            user: 'customer1',
+            rating: 4,
+            comment: 'Good food',
 
-            const findStub = sinon.stub(Review, 'findById')
-                .resolves(review);
-
-            const req = {
-                user: { _id: 'customer1' },
-                params: { id: reviewId },
-                body: {
-                    rating: 5,
-                    comment: 'Excellent food!'
+            // Mock the Review model's encapsulated updateDetails method
+            updateDetails: function (rating, comment) {
+                if (rating !== undefined) {
+                    this.rating = rating;
                 }
-            };
 
-            const res = mockResponse();
+                if (comment !== undefined) {
+                    this.comment = comment.trim();
+                }
+            },
 
-            await updateReview(req, res);
+            save: sinon.stub()
+        };
 
-            sinon.assert.calledOnceWithExactly(findStub, reviewId);
+        review.save.callsFake(async () => review);
 
-            expect(review.rating).to.equal(5);
-            expect(review.comment).to.equal('Excellent food!');
+        const findStub = sinon.stub(Review, 'findById')
+            .resolves(review);
 
-            sinon.assert.calledOnce(review.save);
-            sinon.assert.calledOnceWithExactly(res.status, 200);
-            sinon.assert.calledOnceWithExactly(res.json, review);
-        });
+        const req = {
+            user: { _id: 'customer1' },
+            params: { id: reviewId },
+            body: {
+                rating: 5,
+                comment: 'Excellent food!'
+            }
+        };
+
+        const res = mockResponse();
+
+        await updateReview(req, res);
+
+        sinon.assert.calledOnceWithExactly(findStub, reviewId);
+
+        expect(review.rating).to.equal(5);
+        expect(review.comment).to.equal('Excellent food!');
+
+        sinon.assert.calledOnce(review.save);
+        sinon.assert.calledOnceWithExactly(res.status, 200);
+        sinon.assert.calledOnceWithExactly(res.json, review);
+    });
+
 
         // VT-06: Negative Test
         it('VT-06: should prevent editing another user review', async function () {

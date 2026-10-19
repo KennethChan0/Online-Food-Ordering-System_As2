@@ -115,29 +115,29 @@ const updateReview = async (req, res) => {
       });
     }
 
-    // Validate and update rating if provided
+    // Validate rating if provided
     if (rating !== undefined) {
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({
           message: 'Rating must be an integer between 1 and 5'
         });
       }
-
-      review.rating = rating;
     }
 
-    // Validate and update comment if provided
+    // Validate comment if provided
     if (comment !== undefined) {
       if (typeof comment !== 'string' || !comment.trim()) {
         return res.status(400).json({
           message: 'Comment cannot be empty'
         });
       }
-
-      review.comment = comment.trim();
     }
 
-    // Save changes
+    // OOP Encapsulation:
+    // Delegate review updates to the Review model's instance method
+    review.updateDetails(rating, comment);
+
+    // Save updated review
     const updatedReview = await review.save();
 
     return res.status(200).json(updatedReview);
@@ -146,6 +146,18 @@ const updateReview = async (req, res) => {
     if (error.name === 'CastError') {
       return res.status(400).json({
         message: 'Invalid review ID'
+      });
+    }
+
+    if (error.message === 'Invalid rating') {
+      return res.status(400).json({
+        message: 'Rating must be an integer between 1 and 5'
+      });
+    }
+
+    if (error.message === 'Invalid comment') {
+      return res.status(400).json({
+        message: 'Comment cannot be empty'
       });
     }
 
