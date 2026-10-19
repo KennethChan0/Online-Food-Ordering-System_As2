@@ -1,14 +1,12 @@
-**Onlie Food Ordering Overview:The application is designed to help customer and restaurant improve efficient in terms of making order(not avaliable now) and menu management manage by providing a user-friendly interface for creating, viewing, updating, and deleting menu. It includes essential features such as secure user authentication, allowing individuals to sign up and log in to their accounts, as well as role base selection to seperate role authutication to the application. With built-in validation such as input field validation and email validation, the application ensures a seamless user experience while enhancing productivity. Restaurants can create, view, edit, and delete menu items while customers can only register, log in, and view the restaurant menu. **
+**Onlie Food Ordering System Overview:The application is designed to help customer and restaurant improve efficient. The system includes many features to achieve the goals. For example, menu management helps to organise the menu items, order management provides convinent ways to order food, restaurant review management allows customer to leave feedbacks to restaurants, user profile management allows customers and restaurant to manage their account and table reservation management helps restaurant to check customers booking effectively. **
 
 **This apps **contain** the following features:**
 
-* Role-based signup
-* Login
-* Logout
-* Add Menu items
-* View Menu 
-* Update Menu items
-* Delete Menu items
+* Menu Management (Old feature)
+* Order Management
+* Restaurant Review Management
+* User Profile Management
+* Table Reservation Management
 
 
 **Setup**
@@ -19,50 +17,45 @@ Git
 
 
 **Architecture summary**
-taskmanager/
-├── backend/                         
-│   ├── config/                      
-│   ├── controllers/                 
-│   ├── middleware/                  
-│   ├── models/                      
-│   ├── routes/ 
-│   ├── server.js 
-│   ├── .env    
-│   └── package.json 
-│
-├── frontend/                       
-│   ├── src/                        
-│   │   ├── components/              
-│   │   ├── context/                
-│   │   ├── pages/                  
-│   │   ├── App.js                   
-│   │   ├── axiosConfig.js          
-│   │   └── index.js                 
-│   ├── public/                    
-│   ├── tailwind.config.js        
-│   ├── .gitignore                
-│   └── package.json       
-│
-├── package.json             
-└── README.md         
+Online-Food-Ordering-System_As2/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                 # GitHub Actions workflow
+├── backend/
+│   ├── config/                    # MongoDB connection
+│   ├── controllers/               # Request and business logic
+│   ├── middleware/                # Authentication and validation
+│   ├── models/                    # MongoDB data models
+│   ├── routes/                    # API endpoints
+│   ├── strategies/                # Profile-related rules
+│   ├── test/                      # Backend tests
+│   ├── server.js                  # Express application entry point
+│   └── package.json
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/            # Reusable interface components
+│   │   ├── context/               # Authentication and cart state
+│   │   ├── pages/                 # Application pages
+│   │   ├── App.js                 # Frontend routes
+│   │   ├── axiosConfig.jsx        # Backend API connection
+│   │   └── index.js
+│   └── package.json
+├── package.json                   # Root installation and start scripts
+└── README.md
 
 
 **Known Limitations**
-* It only support one restaurant with multiple restaurant accouts
-* The application does not implement order functions
-* photo can only use URL but not uploading images
-* Customer restrictions of updating, deleting and adding menu items are currently applied in the frontend only.
+* An EC2 public IP may change when an instance is stopped and started, so a deployment using that IP may need to be updated.
+* The system currently supports one restaurant, although more than one restaurant account may exist.
+* CI/CD Github actions is running on a separate self-hosted EC2 instance
 
 **Future Improvement**
-* Support more than one restaurants
-* Image upload function support
-* add server-side authorization
-* add order function 
+* Support multiple restaurants, with menu items, orders and staff access separated by restaurant.
+* EC2 could be running without automatically stopping
+* CI/CD could run on the instances that deployed the project instead of seperating ec2
 
 
 **Deployment URL**
   baseURL: 'http://13.210.184.184:5001',
   EC2 public IP change after it closes.
-
-
-Testing for jira linkage
