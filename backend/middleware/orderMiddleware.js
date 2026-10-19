@@ -42,7 +42,7 @@ class QuantityRule extends OrderValidationRule {
   }
 }
 
-//To check the Menu Id must be valid
+//To check the Menu item object id must be valid
 //Inherit from OrderValidation
 class MenuItemIdRule extends OrderValidationRule {
   constructor() {
@@ -59,6 +59,7 @@ class MenuItemIdRule extends OrderValidationRule {
   }
 }
 
+//create all three objects and using for loop to call their validate methods --> isValid$
 const validateOrderInput = (req, res, next) => {
   const items = req.body?.items;
 
