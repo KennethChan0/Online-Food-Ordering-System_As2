@@ -74,13 +74,15 @@ const getOrders = async (req, res) => {
       return res.status(403).json({ message: 'Not allowed to view orders.' });
     }
 
+    // customer only check their own order , while restaurant no restriction
     const filter =
       req.user.role === 'customer'
         ? { customer: req.user.id }
         : {};
-
+// - 1 = from new to old order
     let query = Order.find(filter).sort({ createdAt: -1 });
 
+    // e\return customer name and email 
     if (req.user.role === 'restaurant') {
       query = query.populate('customer', 'name email');
     }

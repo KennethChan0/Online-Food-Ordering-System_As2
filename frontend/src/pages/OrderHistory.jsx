@@ -9,9 +9,11 @@ const OrderHistory = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
     const [selectedStatuses, setSelectedStatuses] = useState({});
     const [updatingId, setUpdatingId] = useState(null);
     const [updateError, setUpdateError] = useState('');
+    
     const [deletingId, setDeletingId] = useState(null);
     const [deleteMessage, setDeleteMessage] = useState('');
 
@@ -20,7 +22,9 @@ const OrderHistory = () => {
         if (!user) return;
 
         const fetchOrders = async () => {
+            // set loading to be true
             setLoading(true);
+            //clear previous error message
             setError('');
 
             try {
@@ -29,6 +33,7 @@ const OrderHistory = () => {
                         Authorization: `Bearer ${user.token}`,
                     },
                 });
+                // return order data
                 setOrders(response.data);
             } catch (requestError) {
                 setError(
