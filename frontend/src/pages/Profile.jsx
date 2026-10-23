@@ -24,6 +24,7 @@ const Profile = () => {
   const [saveError, setSaveError] = useState('');
   const [message, setMessage] = useState('');
 
+  //Loading data
   useEffect(() => {
     if (!token) return;
     let active = true;
@@ -64,6 +65,8 @@ const Profile = () => {
     }
   }, [token]);
 
+  // Account Deletion Process
+  //To prevent duplicate clicks → window.confirm → DELETE with data: {confirmDelete: true} → clearCart(0 → logout → redirect to login page. clearCart was added by IA1OFoS- 145(2868b25): The shopping cart cannot be left for the next person to log in after deletion.
   const handleDelete = async () => {
     if (deleting || saving) return;
 
@@ -103,7 +106,7 @@ const Profile = () => {
     setSaveError('');
     setMessage('');
   };
-
+// The front end verifies and assembles the data
   const handleSave = async (event) => {
     event.preventDefault();
 
@@ -139,7 +142,7 @@ const Profile = () => {
       setSaveError('Restaurant address must contain 1 to 300 characters');
       return;
     }
-
+    // Only send the allowed fields; the customer's request will not include restaurantAddress; otherwise, the backend will reject due to the whitelist.
     const updates = { name, phone };
 
     if (formData.role === 'restaurant') {
@@ -147,7 +150,7 @@ const Profile = () => {
     }
 
     setSaving(true);
-
+// Refresh the form with the data returned by the server, which displays the actual value trimmed and saved on the backend, not the value just entered by the user.
     try {
       const response = await axiosInstance.put('/api/auth/profile', updates, {
         headers: { Authorization: `Bearer ${token}` },
@@ -168,7 +171,7 @@ const Profile = () => {
       setSaving(false);
     }
   };
-
+//Not logged in, directly jump; if there is no token, navigate to login.
   if (!token) {
     return <Navigate to="/login" replace />;
   }
@@ -213,6 +216,7 @@ const Profile = () => {
           disabled={saving || deleting}
           className="w-full mb-4 p-2 border rounded"
         />
+        // Email is read-only and not included in the backend whitelist—locked at both levels.
         <label htmlFor='profile-email' className="block mb-1">
           Email
         </label>
@@ -238,6 +242,8 @@ const Profile = () => {
           disabled={saving || deleting}
           className="w-full mb-4 p-2 border rounded"
         />
+
+        // Display by role The address input box is only displayed in the restaurant; Role is read-only and cannot be changed to restaurant by itself.
         {formData.role === 'restaurant' && (
           <>
             <label htmlFor='profile-restaurant-address' className="block mb-1">
@@ -272,6 +278,7 @@ const Profile = () => {
               {deleteError}
             </p>
           )}
+          // Disable the button when saving/deleting, to prevent duplicate submissions and prevent deleting while saving.
           <button
             type="submit"
             disabled={saving || deleting}

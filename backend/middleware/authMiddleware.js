@@ -1,9 +1,11 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Middleware: Verify the JWT signature, re-check the user by id, and post it to req.user. All failures are 401.
 const protect = async (req, res, next) => {
     let token;
 
+    // No "Authorization: Bearer xxx" results in a 401 error with "no token".
     if (
         req.headers.authorization &&
         req.headers.authorization.startsWith('Bearer ')
@@ -17,6 +19,7 @@ const protect = async (req, res, next) => {
         });
     }
 
+    //Verify signature + inspect payload JWT verification failed (expired, altered, secret incorrect). 401. Also, an additional check on the decoded ID. The ID must be a string.
     let decoded;
 
     try {
@@ -32,7 +35,7 @@ const protect = async (req, res, next) => {
             message: 'Not authorized, token failed',
         });
     }
-
+// Each request checks the user anew; Even if the token is valid within 30 days, if the user is deleted and findById returns null, it results in a 401 "user not found." This is the reason for "the token becomes invalid immediately after the account is deleted."
     try {
         req.user = await User.findById(decoded.id).select('-password');
 
